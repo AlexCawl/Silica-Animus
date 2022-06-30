@@ -1,5 +1,5 @@
 from config import *
-from module import *
+from modules import *
 
 
 if __name__ == "__main__":

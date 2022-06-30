@@ -9,40 +9,43 @@ def is_console():
 
 
 class Standart(commands.Cog):
-    """Класс стандартных функций бота"""
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        res = db.create()
+        print('create', res.state, res.data)
+
+        for guild in bot.guilds:
+            for member in guild.members:
+                result = db.new_user(guild.id, guild.name, member.id, member.name, 0)
+                print('new_user', result.state, result.data)
+
+        print('We have logged in as {0.user}'.format(bot))
 
     @commands.command()
     async def joke(self, ctx):
         await bot.get_channel(ctx.channel.id).send(f"```{random.choice(all_jokes)}```")
+        print('joke_send', True, None)
 
     @commands.command()
     @is_console()
     async def sh(self, ctx):
         """Краткая справка по командам от разработчика"""
-        output = "**Изменение рейтинга и ролей:**" \
-                 "\t$rating [id | *]\n" \
-                 "\t$set_rating [id] [value]\n" \
-                 "\t$add_rating [id] [value]\n" \
-                 "\t$update\n" \
-                 "\t$roles\n" \
-                 "\t$set_roles [id] [r_lower] [r_upper], ...\n" \
-                 "\t$clear_roles [id], ...\n" \
+        output = "**Изменение рейтинга:**" \
+                 "\t$rating [id | *] - вывод рейтинга [пользователя | всех пользователей]\n" \
+                 "\t$set_rating [id] [value] - установка рейтинга пользователя с id на значение value\n" \
+                 "\t$add_rating [id] [value] - изменение рейтинга пользователя с id на значение value\n" \
+                 "**Изменение ролей:**" \
+                 "\t$roles [...] - вывод списка автоматической установки ролей\n" \
+                 "\t$set_roles ([key] [id] [r_lower] [r_upper]), ... - обновление ролей с key и id на промежуток [r_lower, r_upper]\n" \
+                 "\t$clear_roles ([key]), ... - полное удаление ролей с key\n" \
                  "**Изменение рабочей директории:**\n" \
-                 "\t$cd\n" \
-                 "\t$set_cd [console] [logs] [info]\n" \
-                 "**Стандартные функции:**\n" \
-                 "\t$joke\n" \
-                 "\t$hello_world\n" \
-                 "\t$sh\n" \
-                 "**Взаимодействие с опросами:**\n" \
-                 "\t$set_survey [title] [case1], ... \n" \
-                 "\t$get_survey\n" \
-                 "\t$check_survey [message_id]\n" \
-                 "\t$clear_survey [message_id]\n" \
-
+                 "\t$cd [...] - вывод рабочих директорий бота\n" \
+                 "\t$set_cd [console] [logs] [info] - установка рабочих директорий\n"
         await ctx.message.channel.send(output)
+        print('super_help', True, None)
 
     @commands.command()
     @is_console()
@@ -82,6 +85,7 @@ class Standart(commands.Cog):
         output = "```Нажимай на эту реакцию, и начинай программировать вместе с нами)```"
         message = await bot.get_channel(channel_id).send(f"""{output}""")
         await message.add_reaction("💻")
+        print('hello_world', True, None)
 
 
 class Directory(commands.Cog):
@@ -99,6 +103,7 @@ class Directory(commands.Cog):
         info_id = int(info_id)
 
         res = db.set_directory(ctx.guild.id, bot.get_guild(ctx.guild.id).name, console_id, log_id, info_id)
+        print('set_directory', res.state, res.data)
 
         await ctx.message.channel.send(f'```Рабочие директории изменены следующим образом:\n'
                                        f'Консоль: {bot.get_channel(console_id)}\n'
@@ -116,6 +121,7 @@ class Directory(commands.Cog):
         """
 
         res = db.get_directory(ctx.guild.id)
+        print('get_directory', res.state, res.data)
 
         await ctx.message.channel.send(f'```Рабочие директории установлены следующим образом:\n'
                                        f'Консоль: {bot.get_channel(res.data[0])}\n'
@@ -139,10 +145,11 @@ class Rating(commands.Cog):
         server_roles = db.get_roles(server_id).data
 
         current_user = bot.get_guild(server_id).get_member(user_id)
-        current_value = db.get_rating(server_id, user_id).data[user_id][1]
+        current_value = db.get_rating(server_id, user_id).data
+        print(current_user, current_value)
 
         for role in server_roles:
-            current_role = bot.get_guild(server_id).get_role(role)
+            current_role = bot.get_guild(server_id).get_role(server_roles[role][2])
             if current_role not in current_user.roles:
                 if server_roles[role][1][0] <= current_value <= server_roles[role][1][1]:
                     await current_user.add_roles(current_role)
@@ -155,30 +162,12 @@ class Rating(commands.Cog):
                         f"```Roles of {current_user} updated as [-{current_role}]```")
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        """Активация бота"""
-        res = db.create()
-        res.print('start')
-
-        for guild in bot.guilds:
-            for member in guild.members:
-                result = db.new_user(guild.id, guild.name, member.id, member.name, 0)
-                result.print('on_ready')
-
-        print('We have logged in as {0.user}'.format(bot))
-
-    @commands.Cog.listener()
     async def on_member_join(self, member):
-        """Обновление рейтинга-ролей при присоединении нового участника"""
-        print('NewUser', member.guild.id, member.guild.name, member.id, member.name, True)
-        for guild in bot.guilds:
-            for member in guild.members:
-                result = db.new_user(guild.id, guild.name, member.id, member.name, 0)
+        print(dir(member))
 
     @commands.command()
     @is_console()
     async def update(self, ctx):
-        """Обновление рейтинга-ролей после перезаписи рейтингов"""
         output = db.get_directory(ctx.guild.id).data[1]
         a = db.get_rating(ctx.guild.id, '*')
         b = db.get_roles(ctx.guild.id)
@@ -189,7 +178,7 @@ class Rating(commands.Cog):
         for user in server_users:
             current_user = bot.get_guild(ctx.guild.id).get_member(user)
             for role in server_roles:
-                current_role = bot.get_guild(ctx.guild.id).get_role(role)
+                current_role = bot.get_guild(ctx.guild.id).get_role(server_roles[role][2])
                 if current_role not in current_user.roles:
                     if server_roles[role][1][0] <= server_users[user][1] <= server_roles[role][1][1]:
                         await current_user.add_roles(current_role)
@@ -201,15 +190,16 @@ class Rating(commands.Cog):
                         await bot.get_channel(output).send(
                             f"```Roles of {current_user} updated as [-{current_role}]```")
         await bot.get_channel(output).send(f"```Обновления ролей завершены```")
+        print('update_user_roles', a.state, b.state)
 
     @commands.command()
     @is_console()
     async def add_rating(self, ctx, user_id: int, value: int):
-        """Добавление рейтинга пользователю на сервере"""
+        """Эта команда добавляет рейтинг пользователю на сервере."""
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
 
         res = db.add_rating(ctx.guild.id, user_id, value)
-        res.print('add_rating')
+        print('add_rating', res.state, res.data)
 
         if res.state:
             await channel_output.send(
@@ -222,11 +212,11 @@ class Rating(commands.Cog):
     @commands.command()
     @is_console()
     async def set_rating(self, ctx, user_id: int, value: int):
-        """Установление рейтинга пользователю на сервере"""
+        """Эта команда устанавливает рейтинг пользователя на сервере."""
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
 
         res = db.set_rating(ctx.guild.id, user_id, value)
-        res.print('set_rating')
+        print('set_rating', res.state, res.data)
 
         if res.state:
             await channel_output.send(
@@ -239,38 +229,40 @@ class Rating(commands.Cog):
     @commands.command()
     @is_console()
     async def rating(self, ctx, user_id):
-        """Эта команда показывает рейтинг пользователя/пользователей на сервере"""
+        """Эта команда показывает рейтинг пользователя/пользователей на сервере."""
         channel_output = ctx.message.channel
 
         res = db.get_rating(ctx.guild.id, user_id)
-        res.print('rating')
         output = ""
         for key in res.data:
             output += f"[{key}] {res.data[key][1]:5.0f}\t{res.data[key][0]}\n"
         await channel_output.send(f'```{output}```')
+        print('rating', res.state, None)
 
     @commands.command()
     @is_console()
     async def set_roles(self, ctx, *args):
-        """Установка списка автообновления ролей в соответствии с рейтингом"""
+        """Эта команда устанавливает список ролей в соответствии с определенным рейтингом на конкретном сервере."""
 
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
         args = list(map(int, args))
 
-        for i in range(0, len(args), 3):
+        for i in range(0, len(args), 4):
             try:
-                role_id = args[i]
-                rating_lower = args[i + 1]
-                rating_upper = args[i + 2]
+                key = args[i]
+                role_id = args[i + 1]
+                rating_lower = args[i + 2]
+                rating_upper = args[i + 3]
 
-                res = db.set_roles(ctx.guild.id, ctx.guild.name, role_id, bot.get_guild(ctx.guild.id).get_role(role_id), rating_lower, rating_upper)
-                res.print('set_roles')
+                res = db.set_roles(ctx.guild.id, bot.get_guild(ctx.guild.id).name, key, role_id,
+                                   bot.get_guild(ctx.guild.id).get_role(role_id), rating_lower, rating_upper)
 
                 if res.state:
                     await channel_output.send(
-                        f'```Role [{role_id}] [{str(bot.get_guild(ctx.guild.id).get_role(role_id))}] in [{rating_lower}:{rating_upper}] changed successfully```')
+                        f'```Role [{key}] [{role_id} : {str(bot.get_guild(ctx.guild.id).get_role(role_id))}] in [{rating_lower}:{rating_upper}] changed successfully```')
                 else:
                     await channel_output.send(f'```[ERROR] [An error in the database!]```')
+                print('set_roles', res.state)
 
             except:
                 await channel_output.send(f'```[ERROR] [An error due to missing parameters!]```')
@@ -281,21 +273,21 @@ class Rating(commands.Cog):
     @commands.command()
     @is_console()
     async def clear_roles(self, ctx, *args):
-        """Удаление ролей из списка автообновления"""
+        """Эта команда удаляет роли из списка автоматического присвоения на сервере по указанным ключам."""
 
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
 
-        for role_id in args:
+        for key in args:
             try:
-                res = db.clr_roles(ctx.guild.id, role_id)
-                res.print('clear_roles')
+                res = db.clr_roles(ctx.guild.id, key)
 
                 if res.state:
-                    await channel_output.send(f"```Role with key [{role_id}] deleted successfully```")
+                    await channel_output.send(f"```Role with key [{key}] deleted successfully```")
                 else:
-                    await channel_output.send(f"```Role with key [{role_id}] delete failed```")
+                    await channel_output.send(f"```Role with key [{key}] delete failed```")
+                print('clear_roles', res.state)
             except:
-                await channel_output.send(f"```Role with key [{role_id}] is not in database```")
+                await channel_output.send(f"```Role with key [{key}] is not in database```")
 
         await ctx.message.channel.send(
             f"```Автоматическое присвоение ролей установлено следующим образом:\n{self.roles_output(db.get_roles(ctx.guild.id).data)}```")
@@ -303,12 +295,10 @@ class Rating(commands.Cog):
     @commands.command()
     @is_console()
     async def roles(self, ctx):
-        """Вывод списка автоматического обновления ролей"""
-        res = db.get_roles(ctx.guild.id)
-        res.print('roles')
-
+        """Эта команда показывает список автоматического присвоения ролей на сервере."""
         await ctx.message.channel.send(
-            f"```Автоматическое присвоение ролей установлено следующим образом:\n{self.roles_output(res.data)}```")
+            f"```Автоматическое присвоение ролей установлено следующим образом:\n{self.roles_output(db.get_roles(ctx.guild.id).data)}```")
+        print('roles', True, None)
 
 
 class Survey(commands.Cog):
@@ -383,12 +373,12 @@ class Survey(commands.Cog):
 
         # записываем в базу данных
         result = db.set_survey(ctx.guild.id, bot.get_guild(ctx.guild.id).name, survey_message.id, title, stats)
-        result.print('set_survey')
         if result.state:
             await bot.get_channel(logs).send(
                 f"```Survey [{survey_message.id}] [{title}] {reactions} is created successfully```")
         else:
             await bot.get_channel(logs).send(f"```Survey is not created successfully :(```")
+        print('set_survey', result.state, None)
 
     @commands.command()
     @is_console()
@@ -412,39 +402,37 @@ class Survey(commands.Cog):
         await message.reply(f"""```{output}```""")
 
         res = db.clr_survey(ctx.guild.id, message_id)
-        res.print('clear_survey')
         if res.state:
             await bot.get_channel(logs).send(f"""```Survey with [id = {message_id}] deleted successfully```""")
         else:
             await bot.get_channel(logs).send(f"""```Survey with [id = {message_id}] doesn't deleted!```""")
+        print('clear_survey', res.state, None)
 
     @commands.command()
     @is_console()
     async def check_survey(self, ctx, message_id: int):
         """Проверка текущей статистики опроса"""
 
-        res = db.get_survey(ctx.guild.id)
-        res.print('check_survey')
-        survey_dict = eval(res.data[message_id][1])
-        all_votes = sum(survey_dict.values())
+        result = eval(db.get_survey(ctx.guild.id).data[message_id][1])
+        all_votes = sum(result.values())
 
         output = "Текущие результаты опроса:\n"
-        for key in survey_dict:
-            percentage = survey_dict[key] / all_votes * 100
-            output += f"[{key}] - {survey_dict[key]} | {percentage:.1f}%\n"
+        for key in result:
+            percentage = result[key] / all_votes * 100
+            output += f"[{key}] - {result[key]} | {percentage:.1f}%\n"
 
         await bot.get_channel(ctx.channel.id).send(f"""```{output}```""")
+        print('check_survey', True, None)
 
     @commands.command()
     @is_console()
     async def get_survey(self, ctx):
-        """Вывод всех текущих опросов на сервере"""
         channel_id = ctx.channel.id
-        res = db.get_survey(ctx.guild.id)
-        print('get_survey')
-        surveys = res.data
+        surveys = db.get_survey(ctx.guild.id).data
         output = ""
         for key in surveys:
             output += f"[{key}]\t[{surveys[key][1]}]\t[{surveys[key][0]}]\n"
 
         await bot.get_channel(channel_id).send(f"```{output}```")
+        print('get_survey', True, None)
+

@@ -10,6 +10,7 @@ distlib==0.3.1
 filelock==3.0.12
 idna==2.10
 multidict==6.0.2
+peewee==3.15.0
 pipenv==2020.8.13
 pycosat==0.6.3
 requests==2.24.0

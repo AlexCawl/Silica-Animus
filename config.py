@@ -3,9 +3,13 @@ from discord.ext import commands
 from discord import utils
 import sqlite3
 import random
+import time
 
 bot_token = 'OTYyMjMzMDYwNDc5MzM2NDQ4.G1BsMS.3wELHc7fkmtn1s_dp0aaPfWJWiLCxbyTCKSprs'
 ID = '962233060479336448'
+
+key = '589d94535562e13e20f78446fcd5fa74bceda4bf'
+secret = '2366ca3bf665a0ec04134fcdc8aa5c19b8929ddf'
 
 all_reactions = ['🥇', '🥈', '🥉', '🆎', '🏧', '🅰', '♒', '♈', '🔙', '🅱', '🆑', '🆒', '♋', '♑', '🎄', '🔚', '🆓', '♊',
                  '🆔', '🉑', '🈸', '🉐', '🏯', '㊗', '🈹', '🎎', '🈚', '🈁', '🈷', '🈵', '🈶', '🈺', '🈴', '🏣', '🈲',
@@ -312,74 +316,71 @@ class Report:
     def answer(self):
         return self.data
 
+    def print(self, type):
+        print(type, self.state, self.data)
+
 
 class DataBase:
-    def __init__(self, name):
+    def __init__(self, name, rating_table, role_table, directory_table, survey_table):
         self.name = name
+        self.rating_table = rating_table
+        self.role_table = role_table
+        self.directory_table = directory_table
+        self.survey_table = survey_table
 
     # создание базы данных
     def create(self):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
-        script_create_R = """
-                                CREATE TABLE IF NOT EXISTS BigBrother(
-                                    user_id INTEGER,
-                                    user_name TEXT,
-                                    server_id INTEGER,
-                                    server_name TEXT,
-                                    rating INTEGER)
-                              """
-        cursor.execute(script_create_R)
+        try:
+            query = f"""
+                        CREATE TABLE IF NOT EXISTS {self.rating_table}(
+                            server_id INTEGER,
+                            server_name TEXT,
+                            user_id INTEGER,
+                            user_name TEXT,                                    
+                            score INTEGER)
+                    """
+            cursor.execute(query)
 
-        script_create_L = """ 
-                                CREATE TABLE IF NOT EXISTS RatingLogs(
-                                    type TEXT,
-                                    time REAL,
-                                    date TEXT,
-                                    user_id INTEGER,
-                                    user_name TEXT,
-                                    server_id INTEGER,
-                                    server_name TEXT,
-                                    value INTEGER)
-                              """
-        cursor.execute(script_create_L)
+            query = f"""
+                        CREATE TABLE IF NOT EXISTS {self.directory_table}(
+                            server_id INTEGER,
+                            server_name TEXT,
+                            console_id INTEGER,
+                            log_id INTEGER,
+                            info_id INTEGER,
+                            auth INTEGER)    
+                    """
+            cursor.execute(query)
 
-        script_create_C = """
-                                CREATE TABLE IF NOT EXISTS WorkingDirectory(
-                                    server_id INTEGER,
-                                    server_name TEXT,
-                                    console_id INTEGER,
-                                    log_id INTEGER,
-                                    info_id INTEGER)    
-            """
-        cursor.execute(script_create_C)
+            query = f"""
+                        CREATE TABLE IF NOT EXISTS {self.role_table}(
+                            server_id INTEGER,
+                            server_name TEXT,
+                            role_id INTEGER,
+                            role_name INTEGER,
+                            rating_lower INTEGER,
+                            rating_upper INTEGER)
+                     """
+            cursor.execute(query)
 
-        script_create_D = """
-                                CREATE TABLE IF NOT EXISTS Ranks(
-                                    server_id INTEGER,
-                                    server_name TEXT,
-                                    key INTEGER,
-                                    role_id INTEGER,
-                                    role_name INTEGER,
-                                    rating_lower INTEGER,
-                                    rating_upper INTEGER)
-                              """
-        cursor.execute(script_create_D)
+            query = f"""
+                        CREATE TABLE IF NOT EXISTS {self.survey_table}(
+                            server_id INTEGER,
+                            server_name TEXT,
+                            message_id INTEGER,
+                            message_text TEXT,
+                            results TEXT)
+                     """
+            cursor.execute(query)
 
-        script_create_S = """
-                                CREATE TABLE IF NOT EXISTS Surveys(
-                                    server_id INTEGER,
-                                    server_name TEXT,
-                                    message_id INTEGER,
-                                    message_text TEXT,
-                                    results TEXT)
-                                """
-        cursor.execute(script_create_S)
-
-        DB.commit()
-        DB.close()
-        return Report(True, None)
+            DB.commit()
+            DB.close()
+            return Report(True, None)
+        except:
+            return Report(False, None)
 
     # работа с директориями бота
     def set_directory(self, server_id: int, server_name: str, console_id: int, log_id: int, info_id: int):
@@ -387,32 +388,30 @@ class DataBase:
         cursor = DB.cursor()
 
         try:
-            query = f"""INSERT INTO WorkingDirectory(server_id, server_name, console_id, log_id, info_id)
-                            SELECT {server_id}, '{server_name}', {console_id}, {log_id}, {info_id}
-                            WHERE NOT EXISTS(SELECT 1 FROM WorkingDirectory WHERE server_id = {server_id})"""
+            query = f"""INSERT INTO {self.directory_table}(server_id, server_name, console_id, log_id, info_id, auth)
+                        SELECT {server_id}, '{server_name}', {console_id}, {log_id}, {info_id}, {0}
+                        WHERE NOT EXISTS(SELECT 1 FROM {self.directory_table} WHERE server_id = {server_id})"""
             cursor.execute(query)
 
-            query = f"""UPDATE WorkingDirectory SET console_id = {console_id}, log_id = {log_id}, info_id = {info_id} WHERE server_id = {server_id};"""
+            query = f"""UPDATE {self.directory_table} SET console_id = {console_id}, log_id = {log_id}, info_id = {info_id} WHERE server_id = {server_id};"""
             cursor.execute(query)
 
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def get_directory(self, server_id: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""SELECT console_id, log_id, info_id FROM WorkingDirectory WHERE server_id = '{server_id}';"""
+            query = f"""SELECT console_id, log_id, info_id FROM {self.directory_table} WHERE server_id = '{server_id}'"""
             cursor.execute(query)
             return Report(True, cursor.fetchall()[0])
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     # работа с рейтингом
     def set_rating(self, server_id: int, user_id: int, value: int):
@@ -420,34 +419,31 @@ class DataBase:
         cursor = DB.cursor()
 
         try:
-            query = f"""UPDATE BigBrother SET rating = {value} WHERE user_id = {user_id} and server_id = {server_id};"""
+            query = f"""UPDATE {self.rating_table} SET score = {value} WHERE server_id = {server_id} and user_id = {user_id};"""
             cursor.execute(query)
-
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def add_rating(self, server_id: int, user_id: int, value: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""SELECT rating FROM BigBrother WHERE user_id = {user_id} and server_id = {server_id};"""
+            query = f"""SELECT score FROM {self.rating_table} WHERE server_id = {server_id} and user_id = {user_id}"""
             cursor.execute(query)
             current_rating = cursor.fetchall()[0][0]
 
-            query = f"""UPDATE BigBrother SET rating = {current_rating + value} WHERE user_id = {user_id} and server_id = {server_id};"""
+            query = f"""UPDATE {self.rating_table} SET score = {current_rating + value} WHERE server_id = {server_id} and user_id = {user_id}"""
             cursor.execute(query)
 
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def get_rating(self, server_id: int, user_id: str):
         def rating_callback_data(array):
@@ -461,105 +457,93 @@ class DataBase:
 
         try:
             if user_id == '*':
-                query = f"""SELECT user_id, user_name, rating FROM BigBrother WHERE server_id = {server_id};"""
-                cursor.execute(query)
-                answer = cursor.fetchall()
-                DB.commit()
-                DB.close()
-
-                return Report(True, rating_callback_data(answer))
+                query = f"""SELECT user_id, user_name, score FROM {self.rating_table} WHERE server_id = {server_id}"""
             else:
-                query = f"""SELECT rating FROM BigBrother WHERE user_id = {user_id} and server_id = {server_id}"""
-                cursor.execute(query)
-                answer = cursor.fetchall()[0][0]
-                DB.commit()
-                DB.close()
+                query = f"""SELECT user_id, user_name, score FROM {self.rating_table} WHERE server_id = {server_id} and user_id = {user_id}"""
 
-                return Report(True, answer)
+            cursor.execute(query)
+            answer = cursor.fetchall()
+            DB.commit()
+            DB.close()
+            return Report(True, rating_callback_data(answer))
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def new_user(self, server_id: int, server_name: str, user_id: int, user_name: str, value: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""INSERT INTO BigBrother(user_id, user_name, server_id, server_name, rating)
-                            SELECT {user_id}, '{user_name}', {server_id}, '{server_name}', {value}
-                            WHERE NOT EXISTS(SELECT 1 FROM BigBrother WHERE user_id = {user_id} and server_id = {server_id});"""
+            query = f"""INSERT INTO {self.rating_table}(server_id, server_name, user_id, user_name, score)
+                        SELECT {server_id}, '{server_name}', {user_id}, '{user_name}', {value}
+                        WHERE NOT EXISTS(SELECT 1 FROM {self.rating_table} WHERE server_id = {server_id} and user_id = {user_id})"""
             cursor.execute(query)
 
-            query = f"""UPDATE BigBrother SET user_name = '{user_name}', server_name = '{server_name}' WHERE user_id = {user_id} and server_id = {server_id};"""
+            query = f"""UPDATE {self.rating_table} SET server_name = '{server_name}', user_name = '{user_name}' WHERE server_id = {server_id} and user_id = {user_id}"""
             cursor.execute(query)
 
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     # работа с ролями
-    def set_roles(self, server_id: int, server_name: str, key, role_id: int, role_name: str, rating_lower: int,
-                  rating_upper: int):
+    def set_roles(self, server_id: int, server_name: str, role_id: int, role_name: str, rating_lower: int, rating_upper: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""INSERT INTO Ranks(server_id, server_name, key, role_id, role_name, rating_lower, rating_upper)
-                            SELECT {server_id}, '{server_name}', {key}, {role_id}, '{role_name}', {rating_lower}, {rating_upper}
-                            WHERE NOT EXISTS(SELECT 1 FROM Ranks WHERE server_id = {server_id} and key = {key});
-                         """
+            query = f"""INSERT INTO {self.role_table}(server_id, server_name, role_id, role_name, rating_lower, rating_upper)
+                        SELECT {server_id}, '{server_name}', {role_id}, '{role_name}', {rating_lower}, {rating_upper}
+                        WHERE NOT EXISTS(SELECT 1 FROM {self.role_table} WHERE server_id = {server_id} and role_id = {role_id});
+                     """
             cursor.execute(query)
 
-            query = f"""UPDATE Ranks 
-                            SET server_name = '{server_name}', role_id = {role_id}, role_name = '{role_name}', rating_lower = {rating_lower}, rating_upper = {rating_upper} 
-                            WHERE server_id = {server_id} and key = {key};
-                         """
+            query = f"""UPDATE {self.role_table} 
+                        SET server_name = '{server_name}', role_name = '{role_name}', rating_lower = {rating_lower}, rating_upper = {rating_upper} 
+                        WHERE server_id = {server_id} and role_id = {role_id};
+                     """
             cursor.execute(query)
 
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def get_roles(self, server_id: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""SELECT key, role_name, rating_lower, rating_upper, role_id FROM Ranks WHERE server_id = {server_id}"""
+            query = f"""SELECT role_id, role_name, rating_lower, rating_upper FROM {self.role_table} WHERE server_id = {server_id}"""
             cursor.execute(query)
             array = cursor.fetchall()
 
             roles = {}
             for element in array:
-                roles.update({int(element[0]): (element[1], (int(element[2]), int(element[3])), element[4])})
+                roles.update({int(element[0]): (element[1], (int(element[2]), int(element[3])))})
 
             DB.commit()
             DB.close()
             return Report(True, roles)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
-    def clr_roles(self, server_id: int, key):
+    def clr_roles(self, server_id: int, role_id: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""DELETE FROM Ranks WHERE server_id = {server_id} and key = {key}"""
+            query = f"""DELETE FROM {self.role_table} WHERE server_id = {server_id} and role_id = {role_id}"""
             cursor.execute(query)
 
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     # работа с опросами
     def set_survey(self, server_id: int, server_name: str, message_id: int, message_text: str, results: str):
@@ -568,43 +552,40 @@ class DataBase:
 
         try:
             query = f"""
-                        INSERT INTO Surveys(server_id, server_name, message_id, message_text, results)                            
-                        SELECT {server_id}, "{server_name}", {message_id}, "{message_text}", "{results}"
+                        INSERT INTO {self.survey_table}(server_id, server_name, message_id, message_text, results)                            
+                        SELECT {server_id}, '{server_name}', {message_id}, '{message_text}', "{results}"
                      """
             cursor.execute(query)
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def add_survey(self, server_id: int, message_id: int, results: str):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""UPDATE Surveys SET results = "{results}" WHERE server_id = {server_id} and message_id = {message_id}"""
+            query = f"""UPDATE {self.survey_table} SET results = "{results}" WHERE server_id = {server_id} and message_id = {message_id}"""
             cursor.execute(query)
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def chk_survey(self, server_id: int, message_id: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""SELECT results FROM Surveys WHERE server_id = {server_id} and message_id = {message_id}"""
+            query = f"""SELECT results FROM {self.survey_table} WHERE server_id = {server_id} and message_id = {message_id}"""
             cursor.execute(query)
 
             return Report(True, cursor.fetchall()[0][0])
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def get_survey(self, server_id: int):
         def survey_callback_data(arr):
@@ -617,33 +598,31 @@ class DataBase:
         cursor = DB.cursor()
 
         try:
-            query = f"""SELECT message_id, message_text, results FROM Surveys WHERE server_id = {server_id}"""
+            query = f"""SELECT message_id, message_text, results FROM {self.survey_table} WHERE server_id = {server_id}"""
             cursor.execute(query)
 
             return Report(True, survey_callback_data(cursor.fetchall()))
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
     def clr_survey(self, server_id: int, message_id: int):
         DB = sqlite3.connect(f'{self.name}.db')
         cursor = DB.cursor()
 
         try:
-            query = f"""DELETE FROM Surveys WHERE server_id = {server_id} and message_id = {message_id}"""
+            query = f"""DELETE FROM {self.survey_table} WHERE server_id = {server_id} and message_id = {message_id}"""
             cursor.execute(query)
             DB.commit()
             DB.close()
             return Report(True, None)
         except:
-            with Exception as error:
-                return Report(False, error)
+            return Report(False, None)
 
 
 intents = discord.Intents.all()
 intents.members = True
 bot = commands.Bot(command_prefix='$', intents=intents)
-db = DataBase('SilicaAnimus')
+db = DataBase('SilicaAnimus', 'Rating', 'Role', 'Directory', 'Survey')
 
 if __name__ == "__main__":
     for joke in all_jokes:

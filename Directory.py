@@ -15,8 +15,7 @@ class DirectoryModule(commands.Cog):
     @commands.command()
     async def set_cd(self, ctx, console_id, log_id, info_id):
         """
-            Эта команда устанавливает рабочие директории для бота, где он будет считывать сообщения, писать логи отработки
-            команд, выводить информацию.
+            Установка рабочих директорий
         """
         console_id = int(console_id)
         log_id = int(log_id)
@@ -35,8 +34,7 @@ class DirectoryModule(commands.Cog):
     @commands.command()
     async def cd(self, ctx):
         """
-            Эта команда показывает рабочие директории для бота, где он будет считывать сообщения, писать логи отработки
-            команд, выводить информацию.
+            Вывод рабочих директорий
         """
 
         res = db.get_directory(ctx.guild.id)

@@ -1,3 +1,5 @@
+import requests
+
 from config import *
 
 
@@ -93,51 +95,66 @@ class RatingModule(commands.Cog):
         """Обновление рейтинга-ролей при присоединении нового участника"""
         result = db.new_user(member.guild.id, member.guild.name, member.id, member.name, 0)
         if result.state:
-            msg = self.SoloUser(member.guild.id, member.id)
+            msg = await self.SoloUser(member.guild.id, member.id)
             logs = bot.get_channel(db.get_directory(member.guild.id).data[1])
             if msg != '':
                 await logs.send(f'```{msg}```')
 
     @commands.command()
     @is_console()
-    async def add_rating(self, ctx, user_id: int, value: int):
+    async def add_rating(self, ctx, *, args: str):
         """Добавление рейтинга пользователю на сервере"""
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
+        args = args.split()
 
-        res = db.add_rating(ctx.guild.id, user_id, value)
+        for i in range(0, len(args), 2):
+            try:
+                user_id = int(args[i])
+                value = int(args[i + 1])
+                res = db.add_rating(ctx.guild.id, user_id, value)
 
-        if res.state:
-            await channel_output.send(f'```[{user_id} : {str(bot.get_user(user_id).name)}] [+{value}]```')
-            msg = await self.SoloUser(ctx.guild.id, user_id)
-            if msg != '':
-                await channel_output.send(f'```{msg}```')
-            await ctx.message.add_reaction('🟢')
-        else:
-            await channel_output.send(
-                f'```[ERROR] [[{user_id} : {str(bot.get_user(user_id).name)}] is not in Database!]```')
+                if res.state:
+                    await channel_output.send(f'```[{user_id} : {str(bot.get_user(user_id).name)}] [+{value}]```')
+                    msg = await self.SoloUser(ctx.guild.id, user_id)
+                    if msg != '':
+                        await channel_output.send(f'```{msg}```')
+                else:
+                    await channel_output.send(
+                        f'```[ERROR] [[{user_id} : {str(bot.get_user(user_id).name)}] is not in Database!]```')
+            except:
+                await channel_output.send(f'```Operation for [{args[i]}] is unsuccessful```')
+
+        await ctx.message.add_reaction('👀')
 
     @commands.command()
     @is_console()
-    async def set_rating(self, ctx, user_id: int, value: int):
+    async def set_rating(self, ctx, *, args: str):
         """Установление рейтинга пользователю на сервере"""
         channel_output = bot.get_channel(db.get_directory(ctx.guild.id).data[1])
+        args = args.split()
 
-        res = db.set_rating(ctx.guild.id, user_id, value)
+        for i in range(0, len(args), 2):
+            try:
+                user_id = int(args[i])
+                value = int(args[i + 1])
+                res = db.set_rating(ctx.guild.id, user_id, value)
 
-        if res.state:
-            await channel_output.send(f'```[{user_id} : {str(bot.get_user(user_id).name)}] [={value}]```')
-            msg = await self.SoloUser(ctx.guild.id, user_id)
-            if msg != '':
-                await channel_output.send(f'```{msg}```')
-            await ctx.message.add_reaction('🟢')
-        else:
-            await channel_output.send(
-                f'```[ERROR] [[{user_id} : {str(bot.get_user(user_id).name)}] is not in Database!]```')
+                if res.state:
+                    await channel_output.send(f'```[{user_id} : {str(bot.get_user(user_id).name)}] [={value}]```')
+                    msg = await self.SoloUser(ctx.guild.id, user_id)
+                    if msg != '':
+                        await channel_output.send(f'```{msg}```')
+                    await ctx.message.add_reaction('👀')
+                else:
+                    await channel_output.send(
+                        f'```[ERROR] [[{user_id} : {str(bot.get_user(user_id).name)}] is not in Database!]```')
+            except:
+                await channel_output.send(f'```Operation for [{args[i]}] is unsuccessful```')
 
     @commands.command()
     @is_console()
     async def rating(self, ctx, user_id):
-        """Эта команда показывает рейтинг пользователя/пользователей на сервере"""
+        """Вывод рейтинга пользователей"""
         channel_output = ctx.message.channel
 
         res = db.get_rating(ctx.guild.id, user_id)
@@ -204,3 +221,30 @@ class RatingModule(commands.Cog):
 
         await ctx.message.channel.send(
             f"```Автоматическое присвоение ролей установлено следующим образом:\n{self.roles_output(res.data)}```")
+
+    @commands.command()
+    @is_console()
+    async def ipc(self, ctx, url):
+        def smart_split(line: str, args: list) -> list:
+            for sep in args:
+                line = line.replace(sep, '|*|')
+
+            out = [x if (x != '' and x != '\n') else None for x in line.split('|*|')]
+            while None in out: out.remove(None)
+            return out
+
+        r = requests.get(url).text.split('\n')[57]
+        r = smart_split(r, ['<tr>', '</tr>', '</table>'])
+        out = ""
+
+        for element in r:
+            tmp = smart_split(element, ['<td>', '</td>', '<td align="right">'])
+            login = tmp[0].split(', ')
+            cur = f"{tmp[-1]:5} {tmp[-3]:10} {login[-1]:16} {login[0]} \n"
+
+            if len(out + cur) > 1994:
+                await ctx.message.channel.send(f"```{out}```")
+                out = ""
+
+            out += cur
+        await ctx.message.channel.send(f"```{out}```")

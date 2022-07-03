@@ -15,10 +15,18 @@ def is_directory():
     return commands.check(predicate)
 
 
+def is_any():
+    def predicate(ctx):
+        return not db.get_directory(ctx.guild.id).state
+
+    return commands.check(predicate)
+
+
 class DirectoryModule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @is_any()
     @commands.command()
     async def autocd(self, ctx):
         """Автоматическая установка рабочих директорий"""

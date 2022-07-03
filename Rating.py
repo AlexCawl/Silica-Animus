@@ -225,6 +225,7 @@ class RatingModule(commands.Cog):
     @commands.command()
     @is_console()
     async def ipc(self, ctx, url):
+        """Результаты с соревнования на ipc"""
         def smart_split(line: str, args: list) -> list:
             for sep in args:
                 line = line.replace(sep, '|*|')

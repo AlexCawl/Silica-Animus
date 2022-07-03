@@ -15,6 +15,7 @@ class StandartModule(commands.Cog):
 
     @commands.command()
     async def joke(self, ctx):
+        """Случайный анекдот про Штирлица"""
         await bot.get_channel(ctx.channel.id).send(f"```{random.choice(all_jokes)}```")
 
     @commands.command()

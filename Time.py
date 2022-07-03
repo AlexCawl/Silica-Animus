@@ -1,3 +1,5 @@
+import asyncio
+
 from config import *
 
 
@@ -8,9 +10,11 @@ def is_console():
     return commands.check(predicate)
 
 
-class RatingModule(commands.Cog):
+class TimeModule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+
 
 
 

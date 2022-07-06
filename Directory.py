@@ -17,7 +17,11 @@ def is_directory():
 
 def is_any():
     def predicate(ctx):
-        return not db.get_directory(ctx.guild.id).state
+        if not db.get_directory(ctx.guild.id).state:
+            return True
+        elif ctx.message.channel.id in db.get_directory(ctx.guild.id).data:
+            return True
+        return False
 
     return commands.check(predicate)
 

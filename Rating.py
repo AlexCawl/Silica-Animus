@@ -82,10 +82,9 @@ class RatingModule(commands.Cog):
         """Активация бота"""
 
         for guild in bot.guilds:
+            for member in guild.members:
+                result = db.new_user(member.guild.id, member.guild.name, member.id, member.name, 0)
             msg = await self.ServerUpdate(guild.id)
-            print(guild.name, guild.id)
-            print(msg)
-
         print('We have logged in as {0.user}'.format(bot))
 
     @commands.Cog.listener()

@@ -30,8 +30,8 @@ class DirectoryModule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @is_any()
     @commands.command()
+    @is_any()
     async def autocd(self, ctx):
         """Автоматическая установка рабочих директорий"""
         role = await ctx.guild.create_role(name='Tech Personnel', colour=discord.Colour(0x8db6af),

@@ -55,7 +55,7 @@ class DataBase:
                 return Report(True, (current_dirs.console_id, current_dirs.log_id, current_dirs.info_id),
                               'get_directory [exists]')
             except:
-                return Report(True, (-1, -1, -1), 'get_directory [None]')
+                return Report(False, (-1, -1, -1), 'get_directory [None]')
 
     # управление рейтингом
     def set_rating(self, server_id: int, user_id: int, score: int):

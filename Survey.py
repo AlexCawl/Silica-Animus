@@ -1,5 +1,4 @@
 from config import *
-import time
 
 
 def is_console():
